@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "241454140574",
+    "project_id": "nft-store-a032f",
+    "storage_bucket": "nft-store-a032f.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:241454140574:android:4a2e6b30f459d8e8aeff8f",
+        "android_client_info": {
+          "package_name": "edu.uncc.assessment05"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDtqXjnaIoh2iEtU8pgI3ct5iizWzWZJq0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
