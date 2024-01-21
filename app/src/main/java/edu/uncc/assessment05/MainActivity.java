@@ -6,6 +6,7 @@ import android.os.Bundle;
 
 import com.google.firebase.auth.FirebaseAuth;
 
+import edu.uncc.assessment05.fragments.FavoritesFragment;
 import edu.uncc.assessment05.fragments.NftsFragment;
 import edu.uncc.assessment05.fragments.auth.LoginFragment;
 import edu.uncc.assessment05.fragments.auth.RegisterFragment;
@@ -61,6 +62,14 @@ public class MainActivity extends AppCompatActivity implements LoginFragment.Log
         getSupportFragmentManager()
                 .beginTransaction()
                 .replace(R.id.rootView, new LoginFragment())
+                .commit();
+    }
+
+    @Override
+    public void goToFavorite() {
+        getSupportFragmentManager()
+                .beginTransaction()
+                .replace(R.id.rootView,new FavoritesFragment())
                 .commit();
     }
 
