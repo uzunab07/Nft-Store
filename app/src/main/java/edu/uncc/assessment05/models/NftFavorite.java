@@ -3,7 +3,22 @@ package edu.uncc.assessment05.models;
 import com.google.firebase.Timestamp;
 
 public class NftFavorite {
-    public String docId, ownerId, image_thumbnail_url, name, collection_name, collection_banner_image_url;
+    public String nftId;
+
+    public String getNftId() {
+        return nftId;
+    }
+
+    public void setNftId(String nftId) {
+        this.nftId = nftId;
+    }
+
+    public String docId;
+    public String ownerId;
+    public String image_thumbnail_url;
+    public String name;
+    public String collection_name;
+    public String collection_banner_image_url;
     public Timestamp created_at;
 
     public NftFavorite() {

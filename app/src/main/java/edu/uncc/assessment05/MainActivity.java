@@ -30,7 +30,10 @@ public class MainActivity extends AppCompatActivity implements LoginFragment.Log
                     .replace(R.id.rootView, new NftsFragment())
                     .commit();
         }
+
+
     }
+
 
     @Override
     public void goToRegister() {

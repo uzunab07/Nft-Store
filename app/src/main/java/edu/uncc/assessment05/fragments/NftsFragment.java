@@ -21,7 +21,6 @@ import android.widget.Toast;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
-import com.google.firebase.Firebase;
 import com.google.firebase.Timestamp;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -36,9 +35,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
-import java.sql.Time;
 import java.util.ArrayList;
-import java.util.HashMap;
 
 import edu.uncc.assessment05.R;
 import edu.uncc.assessment05.databinding.FragmentNftsBinding;
@@ -56,9 +53,9 @@ public class NftsFragment extends Fragment {
     public NftsFragment() {
         // Required empty public constructor
     }
+
     ArrayList<Nft> nfts = new ArrayList<>();
-    RecyclerView recyclerView;
-    LinearLayoutManager layoutManager;
+    ArrayList<NftFavorite> nftFavorites = new ArrayList<>();
 
     FirebaseFirestore db;
     FragmentNftsBinding binding;
@@ -67,7 +64,6 @@ public class NftsFragment extends Fragment {
 
     NftAdapter adapter;
     private OkHttpClient client = new OkHttpClient();
-
 
 
     @Override
@@ -93,69 +89,12 @@ public class NftsFragment extends Fragment {
         binding.recyclerView.setHasFixedSize(true);
         binding.recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
         adapter = new NftAdapter();
-        
+
         binding.recyclerView.setAdapter(adapter);
 
-//        Retrieving Nft from the Api and Displaying them
-        Request request = new Request.Builder()
-                .url("https://www.theappsdr.com/api/nfts-assets")
-                .build();
-
-        client.newCall(request).enqueue(new Callback() {
-            @Override
-            public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                Log.d("demok", "onFailure: "+e.getMessage());
-            }
-
-            @Override
-            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
-
-                if (response.isSuccessful()){
-                    ResponseBody body  = response.body();
-                    String responseString = body.string();
-                    try {
-                        JSONObject jsonObject = new JSONObject(responseString);
-                        JSONArray assets  = jsonObject.getJSONArray("assets");
-
-                        for (int i=0;i<assets.length();i++) {
-
-                            JSONObject asset = assets.getJSONObject(i);
-                            JSONObject nftObject = asset.getJSONObject("nft");
-                            JSONObject collectionObject = asset.getJSONObject("collection");
-
-                            Nft nft = new Nft();
-                            nft.name = nftObject.getString("name");
-                            nft.collection_name = collectionObject.getString("name");
-                            nft.id = nftObject.getString("id");
-                            nft.image_thumbnail_url = nftObject.getString("image_thumbnail_url");
-                            nft.collection_banner_image_url = collectionObject.getString("banner_image_url");
-                            nfts.add(nft);
-                        }
-                        getActivity().runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                adapter.notifyDataSetChanged();
-                            }
-                        });
-
-                    } catch (JSONException e) {
-                        throw new RuntimeException(e);
-                    }
-
-                }else{
-                    Toast.makeText(getContext(), response.message().toString(), Toast.LENGTH_SHORT).show();
-                }
-            }
-        });
-
-//    Loading Favorites
-getFav();
-
-
-
+        getDataAPI();
 
     }
-
 
 
     @Override
@@ -166,7 +105,7 @@ getFav();
 
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
-        if(item.getItemId() == R.id.logout_item) {
+        if (item.getItemId() == R.id.logout_item) {
             mListener.logout();
             return true;
         } else if (item.getItemId() == R.id.goto_favorites) {
@@ -188,46 +127,124 @@ getFav();
             throw new RuntimeException(context.toString() + " must implement NftsListener");
         }
     }
-    public void getFav(){
+
+    public void getFav() {
+
         db.collection("favorites")
-                .whereEqualTo("ownerId",user.getUid())
+                .whereEqualTo("ownerId", user.getUid())
                 .get()
-                .addOnSuccessListener(new OnSuccessListener<QuerySnapshot>() {
+                .addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
                     @Override
-                    public void onSuccess(QuerySnapshot queryDocumentSnapshots) {
+                    public void onComplete(@NonNull Task<QuerySnapshot> task) {
+                        if (task.isSuccessful()) {
 
+                            for (QueryDocumentSnapshot documentSnapshot : task.getResult()) {
+                                NftFavorite nftFavorite = new NftFavorite();
+                                nftFavorite.name = documentSnapshot.getString("name");
+                                nftFavorite.collection_name = documentSnapshot.getString("name");
+                                nftFavorite.ownerId = documentSnapshot.getString("ownerId");
+                                nftFavorite.docId = documentSnapshot.getString("docId");
+                                nftFavorite.image_thumbnail_url = documentSnapshot.getString("image_thumbnail_url");
+                                nftFavorite.collection_banner_image_url = documentSnapshot.getString("banner_image_url");
+                                nftFavorite.created_at = documentSnapshot.getTimestamp("created_at");
+                                nftFavorite.setNftId(documentSnapshot.getString("nftId"));
 
-                        for (QueryDocumentSnapshot documentSnapshot: queryDocumentSnapshots ) {
-                            Log.d("TAG", "onSuccess: "+documentSnapshot.toString());
+                                nftFavorites.add(nftFavorite);
+                            }
+                        } else {
+                            Toast.makeText(getContext(), task.getException().getMessage(), Toast.LENGTH_SHORT).show();
                         }
                     }
                 });
+
     }
 
-     class NftAdapter extends RecyclerView.Adapter<NftAdapter.NftViewHolder> {
+    public void getDataAPI() {
+        //        Retrieving Nft from the Api and Displaying them
+        Request request = new Request.Builder()
+                .url("https://www.theappsdr.com/api/nfts-assets")
+                .build();
 
-        public  class NftViewHolder extends RecyclerView.ViewHolder{
-            NftRowItemBinding binding;
-            Nft nft;
-            public NftViewHolder(@NonNull NftRowItemBinding itemBinding) {
-                super(itemBinding.getRoot());
-                binding = itemBinding;
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                Log.d("demok", "onFailure: " + e.getMessage());
             }
 
-            public void setupUi(Nft item){
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+
+                if (response.isSuccessful()) {
+                    ResponseBody body = response.body();
+                    String responseString = body.string();
+                    try {
+                        JSONObject jsonObject = new JSONObject(responseString);
+                        JSONArray assets = jsonObject.getJSONArray("assets");
+
+                        for (int i = 0; i < assets.length(); i++) {
+
+                            JSONObject asset = assets.getJSONObject(i);
+                            JSONObject nftObject = asset.getJSONObject("nft");
+                            JSONObject collectionObject = asset.getJSONObject("collection");
+
+                            Nft nft = new Nft();
+                            nft.name = nftObject.getString("name");
+                            nft.collection_name = collectionObject.getString("name");
+                            nft.id = nftObject.getString("id");
+                            nft.image_thumbnail_url = nftObject.getString("image_thumbnail_url");
+                            nft.collection_banner_image_url = collectionObject.getString("banner_image_url");
+                            nfts.add(nft);
+                        }
+
+
+                        getActivity().runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                adapter.notifyDataSetChanged();
+
+                            }
+                        });
+
+                    } catch (JSONException e) {
+                        throw new RuntimeException(e);
+                    }
+
+                } else {
+                    Toast.makeText(getContext(), response.message().toString(), Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
+
+
+    }
+
+    class NftAdapter extends RecyclerView.Adapter<NftAdapter.NftViewHolder> {
+
+        public class NftViewHolder extends RecyclerView.ViewHolder {
+            NftRowItemBinding nftRowItemBinding;
+            Nft nft;
+            NftFavorite nftFavorite;
+
+            public NftViewHolder(@NonNull NftRowItemBinding itemBinding) {
+                super(itemBinding.getRoot());
+                nftRowItemBinding = itemBinding;
+            }
+
+
+            public void setupUi(Nft item) {
+
                 this.nft = item;
 
-                binding.textViewNftName.setText(nft.name);
-                binding.textViewCollectionName.setText(nft.collection_name);
-                Picasso.get().load(nft.collection_banner_image_url).into(binding.imageViewCollectionBanner);
-                Picasso.get().load(nft.image_thumbnail_url).into(binding.imageViewNftIcon);
+
+                nftRowItemBinding.textViewNftName.setText(item.name);
+                nftRowItemBinding.textViewCollectionName.setText(item.collection_name);
+                Picasso.get().load(nft.collection_banner_image_url).into(nftRowItemBinding.imageViewCollectionBanner);
+                Picasso.get().load(nft.image_thumbnail_url).into(nftRowItemBinding.imageViewNftIcon);
 
 
-//                TODO Adding to favorites
-
-                
+//               Adding and removing to favorites
                 DocumentReference docref = db.collection("favorites").document();
-                binding.imageViewAddRemoveFavorite.setOnClickListener(new View.OnClickListener() {
+                nftRowItemBinding.imageViewAddRemoveFavorite.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View view) {
                         NftFavorite nftFavorite = new NftFavorite();
@@ -240,35 +257,36 @@ getFav();
                         nftFavorite.setDocId(docref.getId());
                         nftFavorite.setCreated_at(Timestamp.now());
                         nftFavorite.setName(nft.getName());
+                        nftFavorite.setNftId(nft.getId());
 
 
-                        if(binding.imageViewAddRemoveFavorite.getDrawable().getConstantState() ==
-                         getResources().getDrawable(R.drawable.ic_heart_full).getConstantState()){
-                            binding.imageViewAddRemoveFavorite.setImageResource(R.drawable.ic_heart_empty);
+                        if (nftRowItemBinding.imageViewAddRemoveFavorite.getDrawable().getConstantState() ==
+                                getResources().getDrawable(R.drawable.ic_heart_full).getConstantState()) {
+
                             db.collection("favorites")
-                                    .whereEqualTo("ownerId",nftFavorite.getOwnerId())
-                                    .whereEqualTo("docId",nftFavorite.getDocId())
+                                    .whereEqualTo("ownerId", nftFavorite.getOwnerId())
+                                    .whereEqualTo("docId", nftFavorite.getDocId())
                                     .get()
                                     .addOnSuccessListener(new OnSuccessListener<QuerySnapshot>() {
                                         @Override
                                         public void onSuccess(QuerySnapshot queryDocumentSnapshots) {
                                             queryDocumentSnapshots.getDocuments().get(0).getReference().delete();
-
+                                            nftRowItemBinding.imageViewAddRemoveFavorite.setImageResource(R.drawable.ic_heart_empty);
                                         }
                                     });
-                        }else{
-                            binding.imageViewAddRemoveFavorite.setImageResource(R.drawable.ic_heart_full);
+                        } else {
+
                             docref.set(nftFavorite)
                                     .addOnCompleteListener(new OnCompleteListener<Void>() {
                                         @Override
                                         public void onComplete(@NonNull Task<Void> task) {
-                                            Toast.makeText(getActivity(), nftFavorite.getName()+" is added to Fav ", Toast.LENGTH_SHORT).show();
-                                            Log.d("demok", "onComplete: "+nft.getCollection_name());
+                                            Toast.makeText(getActivity(), nftFavorite.getName() + " is added to Fav ", Toast.LENGTH_SHORT).show();
+                                            nftRowItemBinding.imageViewAddRemoveFavorite.setImageResource(R.drawable.ic_heart_full);
+
                                         }
                                     });
 
                         }
-
 
 
                     }
@@ -280,18 +298,18 @@ getFav();
         }
 
 
-
         @NonNull
         @Override
         public NftViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-            NftRowItemBinding itemBinding = NftRowItemBinding.inflate(getLayoutInflater(),parent,false);
+            NftRowItemBinding itemBinding = NftRowItemBinding.inflate(getLayoutInflater(), parent, false);
             return new NftViewHolder(itemBinding);
         }
 
 
         @Override
         public void onBindViewHolder(NftViewHolder holder, int position) {
-                    holder.setupUi(nfts.get(position));
+            holder.setupUi(nfts.get(position));
+
         }
 
         @Override
@@ -303,6 +321,7 @@ getFav();
 
     public interface NftsListener {
         void logout();
+
         void goToFavorite();
     }
 }
